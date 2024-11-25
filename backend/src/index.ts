@@ -2,24 +2,42 @@ import { WebSocketServer, WebSocket } from "ws";
 
 const wss = new WebSocketServer({port: 8081});
 
-let userCount = 0;
-const allSockets : WebSocket[] = [];
+interface User{
+    socket: WebSocket,
+    roomId: string
+}
+
+let allSockets : User[] = [];
 
 wss.on('connection', (socket: WebSocket) => {
 
-    allSockets.push(socket);      
+    socket.on('message', (message) => {
+        // @ts-ignore
+        const parsedMessage = JSON.parse(message);
 
-    userCount++;
-    console.log(`${userCount} Users Connected`);
+        if(parsedMessage.type === 'join'){
+            console.log('User joined room ' + parsedMessage.payload.roomId);
+            allSockets.push({
+                socket, 
+                roomId: parsedMessage.payload.roomId
+            })
+        }
 
-    socket.on('message', (message: Buffer) => {
-        console.log(message.toString());
-        socket.send('Mil gaya');
-        allSockets.forEach(socket => socket.send(message.toString()));  
+        if(parsedMessage.type === 'chat'){
+            console.log('User wants to chat');
+            const currentRoom = allSockets.find(x => x.socket === socket)?.roomId;
+
+           for(let i = 0; i < allSockets.length; i++){
+               if(allSockets[i].roomId === currentRoom){
+                   allSockets[i].socket.send(parsedMessage.payload.message);
+               }
+            }
+        }
+    }) 
+
+    socket.on('disconnect', () => {
+        allSockets = allSockets.filter(s => s.socket != socket);
     })
 
-    socket.on('close', () => {
-        userCount--;
-        console.log(`${userCount} Users Remaining`);
-    })  
+    socket.send('Connected to server');
 })
