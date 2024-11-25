@@ -38,6 +38,4 @@ wss.on('connection', (socket: WebSocket) => {
     socket.on('disconnect', () => {
         allSockets = allSockets.filter(s => s.socket != socket);
     })
-
-    socket.send('Connected to server');
 })
